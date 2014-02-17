@@ -72,7 +72,7 @@ class HookListener implements EventSubscriberInterface
 
         if ($this->pushIssue) {
             $jiraTags = $this->parseJiraTags($scenario->getTags());
-            $text = implode("\n\t\t", $this->getStepText($scenario));
+            $text = implode("\n", $this->getStepText($scenario));
             $issue = $this->jiraService->pushScenario($jiraTags, $text);
         } else {
             $url = $feature->getFile();
@@ -154,8 +154,10 @@ class HookListener implements EventSubscriberInterface
      * @return Array $jiraTags
      */
     public function getStepText($scenario)
-    { 
+    {
+
         $stepArray = array();
+        $stepArray[] = "{code}";
         $feature = $scenario -> getFeature();
 
         //Parse Title
@@ -167,13 +169,11 @@ class HookListener implements EventSubscriberInterface
             $background = $feature -> getBackground();
 
             $backgroundSteps = $background -> getSteps();
-
-            if ($backgroundSteps -> hasSteps()){
-                $stepArray[] = "Background: " . $background -> getTitle();
-            }
-
-            foreach ($scenarioSteps as $step) {
-                $stepArray[] = $step->getType()." ".$step->getText();
+     
+            $stepArray[] = "Background: " . $background -> getTitle();
+         
+            foreach ($backgroundSteps as $step) {
+                $stepArray[] = "  " . $step->getType()." ".$step->getText();
             }
         }
 
@@ -181,8 +181,9 @@ class HookListener implements EventSubscriberInterface
         $stepArray[] = "Scenario: " . $scenario->getTitle();
 
         foreach ($scenarioSteps as $step) {
-            $stepArray[] = $step->getType()." ".$step->getText();
+            $stepArray[] = "  " . $step->getType()." ".$step->getText();
         }
+        $stepArray[] = "{code}";
 
         return $stepArray;
     }
