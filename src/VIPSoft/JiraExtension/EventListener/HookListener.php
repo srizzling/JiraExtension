@@ -90,8 +90,12 @@ class HookListener implements EventSubscriberInterface
      * @param ScenarioEvent $event
      */
     public function afterSuite(SuiteEvent $event)
-    {
-        if ($this->pushIssue) $this->jiraService->postIssue();
+    {   
+        if ($this->pushIssue) {
+            file_put_contents('php://stdout', "Pushing issues to Jira...");
+            $this->jiraService->postIssue();
+            file_put_contents('php://stdout', " done!" . PHP_EOL);
+        }        
     }
 
     /**
