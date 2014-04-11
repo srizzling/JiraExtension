@@ -55,6 +55,11 @@ class JiraService
      */
     private $store;
 
+     /**
+     * @var array $pushedIssues
+     */
+    private $pushedIssue;
+
     /**
      * Constructor
      *
@@ -231,13 +236,14 @@ class JiraService
     {
         $this->connect();
 
-        foreach ($this->getStore() as $jiraTicket => $value) {
+        foreach ($this->store as $jiraTicket => $value) {
             if ($this->compareIssueField($jiraTicket, $value)) {
                 $data = array(
                     'fields'=>array(
                     'id'=>$this->featureField,
                     'values'=>array(implode($value) . "\n\n")
                 ));
+                $this->pushedIssue[$jiraTicket] = $value;
                 $this->soapClient->updateIssue($this->token, $jiraTicket, $data);
             }
         }
@@ -254,7 +260,9 @@ class JiraService
     public function compareIssueField($jiraTicket, $value){
         $issue = $this->fetchIssue($jiraTicket);
 
+
         $arrayIssue = (array) $issue;
+        $allStatus = $this->soapClient->getStatuses($this->token);
         $fieldValue = null;
 
         if (array_key_exists($this->featureField, $arrayIssue)) {
@@ -272,6 +280,14 @@ class JiraService
         if ($strip===implode($value)) {
            return false; //Issues are the same
         }
+
+        foreach ($allStatus as $status){
+            if($status->name === "Resolved" || $status->name === "Closed" || $status->name === "Done"){
+                if ($status->id === $arrayIssue["status"]){
+                   return false; 
+                }
+          }
+       }
 
         return true; //Issues are not the same
     }
@@ -307,6 +323,6 @@ class JiraService
      */
     public function getStore()
     {
-        return $this->store;
+        return $this->pushedIssue;
     }
 }
