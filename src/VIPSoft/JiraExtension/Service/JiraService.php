@@ -60,6 +60,15 @@ class JiraService
      */
     private $pushedIssue;
 
+
+    /**
+     * @var string $ignoredStatus
+     */
+    private $ignoredStatus;
+
+
+    private $ignoredIssues;
+
     /**
      * Constructor
      *
@@ -69,8 +78,9 @@ class JiraService
      * @param string      $password     Jira user password
      * @param string      $jql          JQL query
      * @param string      $featureField Jira field to upload feature file
+     * @param string       $ignoredStatus Tickets with the statuses in this array are ignored
      */
-    public function __construct(\SoapClient $soapClient, $host, $user, $password, $jql, $featureField)
+    public function __construct(\SoapClient $soapClient, $host, $user, $password, $jql, $featureField, $ignoredStatus)
     {
         $this->soapClient = $soapClient;
         $this->host = $host;
@@ -79,6 +89,9 @@ class JiraService
         $this->jql = $jql;
         $this->featureField = $featureField;
         $this->store = array();
+        $this->pushedIssue = array();
+        $this->ignoredStatus = $ignoredStatus;
+        $this->ignoredIssues = array();
     }
 
     /**
@@ -237,7 +250,7 @@ class JiraService
         $this->connect();
 
         foreach ($this->store as $jiraTicket => $value) {
-            if ($this->compareIssueField($jiraTicket, $value)) {
+            if ($this->checkStatus($jiraTicket) && $this->compareIssueField($jiraTicket, $value)) {
                 $data = array(
                     'fields'=>array(
                     'id'=>$this->featureField,
@@ -257,12 +270,11 @@ class JiraService
      * 
      * @return boolean
      */
-    public function compareIssueField($jiraTicket, $value){
+    public function compareIssueField($jiraTicket, $value)
+    {
         $issue = $this->fetchIssue($jiraTicket);
 
-
         $arrayIssue = (array) $issue;
-        $allStatus = $this->soapClient->getStatuses($this->token);
         $fieldValue = null;
 
         if (array_key_exists($this->featureField, $arrayIssue)) {
@@ -279,17 +291,32 @@ class JiraService
         $strip = preg_replace("/[\n\r]/","",$fieldValue);  
         if ($strip===implode($value)) {
            return false; //Issues are the same
-        }
-
-        foreach ($allStatus as $status){
-            if($status->name === "Resolved" || $status->name === "Closed" || $status->name === "Done"){
-                if ($status->id === $arrayIssue["status"]){
-                   return false; 
-                }
-          }
-       }
+        } 
 
         return true; //Issues are not the same
+    }
+
+    /**
+     * This method checks the status of the Jira Ticket to ensure that
+     * it is not in the array of ignored statuses. 
+     * 
+     * @return array jiraticket to check
+     */
+    public function checkStatus($ticket)
+    {
+        $allStatus = $this->soapClient->getStatuses($this->token);
+        $ignoredStatusArray = explode(",", $this->ignoredStatus);
+        $issue = $this->fetchIssue($ticket);
+        $arrayTicket = (array) $issue;
+        foreach ($allStatus as $status){
+            if(in_array($status->name, $ignoredStatusArray)){
+                if ($status->id === $arrayTicket["status"]){
+                    $this->ignoredIssues[] = $ticket;
+                    return false; 
+                }
+            }
+        }
+        return true;
     }
 
     /**
@@ -323,6 +350,12 @@ class JiraService
      */
     public function getStore()
     {
-        return $this->pushedIssue;
+        return $this->store;
     }
+
+    public function getIgnoredIssues()
+    {
+        return $this->ignoredIssues;
+    }
+
 }

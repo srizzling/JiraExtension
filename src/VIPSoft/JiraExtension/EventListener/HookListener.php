@@ -93,10 +93,8 @@ class HookListener implements EventSubscriberInterface
     {   
         if ($this->pushIssue) {
             file_put_contents('php://stdout', "Pushing issues to Jira...");
-            $store = $this->jiraService->getStore();
-            if(!empty($store)) file_put_contents('php://stdout', "Pushing following issues: " . implode(",", array_keys($store)));
             $this->jiraService->postIssue();
-            file_put_contents('php://stdout', " done!" . PHP_EOL);
+            file_put_contents('php://stdout', "....done!" . PHP_EOL);
         }        
     }
 
